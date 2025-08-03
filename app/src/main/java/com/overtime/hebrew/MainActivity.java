@@ -1,4 +1,4 @@
-package com.overtime.hebrew.activities;
+package com.overtime.hebrew;
 
 import android.app.Activity;
 import android.os.Bundle;
