@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Hebrew strings - matching the web version -->
+    <string name="app_name">מעקב שעות נוספות</string>
+    <string name="main_title">מעקב שעות נוספות</string>
+    <string name="add_overtime">הוסף שעות נוספות</string>
+    <string name="date">תאריך</string>
+    <string name="hours">שעות</string>
+    <string name="minutes">דקות</string>
+    <string name="notes">הערות</string>
+    <string name="save">שמור</string>
+    <string name="cancel">ביטול</string>
+    <string name="monthly_summary">סיכום חודשי</string>
+    <string name="total_hours">סך הכל שעות</string>
+    <string name="required_hours">שעות נדרשות</string>
+    <string name="balance">יתרה</string>
+    <string name="work_days">ימי עבודה</string>
+    <string name="completion_percentage">אחוז השלמה</string>
+</resources>

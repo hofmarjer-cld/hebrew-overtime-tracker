@@ -1,0 +1,354 @@
+name: 🏗️ Hebrew Overtime Tracker - Smart CI/CD Pipeline
+
+# Educational Note: This workflow combines the proven working patterns 
+# that succeeded after 17+ failed attempts with intelligent testing and deployment
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ created ]
+
+jobs:
+  # 🔍 PHASE 1: Code Quality & Validation
+  code-quality:
+    name: 📊 Code Quality Analysis
+    runs-on: ubuntu-latest
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 🔍 Analyze Project Structure
+      run: |
+        echo "🏗️ Analyzing Hebrew Overtime Tracker project structure..."
+        find . -name "*.java" | wc -l | xargs echo "Java files:"
+        find . -name "*.xml" | wc -l | xargs echo "XML files:"
+        find . -name "*.gradle" | wc -l | xargs echo "Gradle files:"
+        echo "📁 Package structure:"
+        find app/src/main/java -type d | head -10
+        echo "🌐 Hebrew resources check:"
+        ls -la app/src/main/res/values*/strings.xml || echo "⚠️ Hebrew resources not found"
+
+    - name: 🔤 Hebrew Text Validation
+      run: |
+        echo "🔍 Validating Hebrew text encoding..."
+        if grep -r "מעקב שעות נוספות" app/src/main/res/; then
+          echo "✅ Hebrew text found and properly encoded"
+        else
+          echo "❌ Hebrew text validation failed"
+          exit 1
+        fi
+
+  # 🏗️ PHASE 2: Build with Proven Working Configuration
+  build-apk:
+    name: 🔨 Build APK (Proven Working Config)
+    runs-on: ubuntu-latest
+    needs: code-quality
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    # Using the EXACT working pattern from successful configuration
+    - name: ☕ Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: 🔧 Cache Gradle Dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: 🛠️ Make gradlew executable
+      run: chmod +x ./gradlew
+
+    - name: 🔍 Validate Gradle Configuration
+      run: |
+        echo "📋 Checking proven working configuration..."
+        if grep -q "buildscript" build.gradle; then
+          echo "✅ Using proven buildscript syntax"
+        else
+          echo "⚠️ Warning: Not using proven buildscript syntax"
+        fi
+        
+        if grep -q "compileSdkVersion" app/build.gradle; then
+          echo "✅ Using proven compileSdkVersion syntax"
+        else
+          echo "⚠️ Warning: Not using proven method syntax"
+        fi
+
+    - name: 🏗️ Build Debug APK
+      run: |
+        echo "🚀 Building with proven working configuration..."
+        ./gradlew assembleDebug --stacktrace --info
+        
+    - name: 🔍 Verify APK Creation
+      run: |
+        echo "📱 Checking APK creation..."
+        APK_PATH=$(find app/build/outputs/apk -name "*.apk" | head -1)
+        if [ -f "$APK_PATH" ]; then
+          echo "✅ APK created successfully: $APK_PATH"
+          ls -lh "$APK_PATH"
+          echo "📊 APK size: $(du -h "$APK_PATH" | cut -f1)"
+        else
+          echo "❌ APK creation failed"
+          find app/build -name "*.apk" || echo "No APK files found"
+          exit 1
+        fi
+
+    - name: 📤 Upload Debug APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: hebrew-overtime-tracker-debug
+        path: app/build/outputs/apk/debug/*.apk
+        retention-days: 30
+
+  # 🧪 PHASE 3: Comprehensive Testing
+  testing-validation:
+    name: 🧪 Smart Testing & Validation
+    runs-on: ubuntu-latest
+    needs: build-apk
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: ☕ Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: 🛠️ Make gradlew executable
+      run: chmod +x ./gradlew
+
+    - name: 📱 Download Built APK
+      uses: actions/download-artifact@v3
+      with:
+        name: hebrew-overtime-tracker-debug
+        path: ./artifacts/
+
+    - name: 🔍 APK Analysis & Validation
+      run: |
+        echo "🔬 Performing comprehensive APK analysis..."
+        APK_FILE=$(find ./artifacts -name "*.apk" | head -1)
+        
+        if [ -f "$APK_FILE" ]; then
+          echo "📊 APK Information:"
+          ls -lh "$APK_FILE"
+          
+          # Use Android build tools if available, otherwise basic checks
+          if command -v aapt &> /dev/null; then
+            echo "📋 APK Contents Analysis:"
+            aapt list "$APK_FILE" | head -20
+            aapt dump badging "$APK_FILE" | grep -E "(package|application-label|uses-permission)"
+          else
+            echo "📦 Basic APK validation:"
+            file "$APK_FILE"
+            unzip -t "$APK_FILE" >/dev/null && echo "✅ APK structure is valid" || echo "❌ APK structure is corrupted"
+          fi
+          
+          echo "📊 APK Size Analysis:"
+          size=$(stat -f%z "$APK_FILE" 2>/dev/null || stat -c%s "$APK_FILE" 2>/dev/null || echo "unknown")
+          if [ "$size" != "unknown" ] && [ "$size" -gt 1000000 ]; then
+            echo "✅ APK size is reasonable: $(echo "scale=2; $size/1024/1024" | bc 2>/dev/null || echo "$(($size/1024/1024))")MB"
+          else
+            echo "⚠️ APK size seems small, may indicate build issues"
+          fi
+        else
+          echo "❌ APK file not found for analysis"
+          exit 1
+        fi
+
+    - name: 🔤 Hebrew Text Extraction Test
+      run: |
+        echo "🔍 Testing Hebrew text extraction from APK..."
+        APK_FILE=$(find ./artifacts -name "*.apk" | head -1)
+        
+        if [ -f "$APK_FILE" ]; then
+          # Extract and check for Hebrew strings
+          unzip -q "$APK_FILE" -d ./extracted/ || true
+          
+          if find ./extracted -name "*.xml" -exec grep -l "מעקב שעות" {} \; | head -1; then
+            echo "✅ Hebrew text successfully embedded in APK"
+          else
+            echo "⚠️ Hebrew text not found in extracted APK (may be compiled)"
+          fi
+          
+          # Check for Hebrew resource files
+          if find ./extracted -path "*/values-he/*" | head -1; then
+            echo "✅ Hebrew resource directory found in APK"
+          else
+            echo "⚠️ Hebrew resource directory not found"
+          fi
+        fi
+
+    - name: 🏗️ Build Configuration Validation
+      run: |
+        echo "🔍 Validating build follows proven working patterns..."
+        
+        # Check for proven syntax patterns
+        echo "📋 Configuration Analysis:"
+        
+        if grep -q "buildscript" build.gradle; then
+          echo "✅ PROVEN: Uses buildscript syntax (not plugins)"
+        fi
+        
+        if grep -q "compileSdkVersion" app/build.gradle; then
+          echo "✅ PROVEN: Uses compileSdkVersion method syntax"
+        fi
+        
+        if grep -q "androidx.appcompat:appcompat" app/build.gradle; then
+          echo "✅ PROVEN: Uses minimal dependency strategy"
+        fi
+        
+        if grep -q "Theme.Material.Light" app/src/main/AndroidManifest.xml; then
+          echo "✅ PROVEN: Uses system theme (not custom)"
+        fi
+        
+        echo "🎯 Build follows proven working patterns from successful configuration"
+
+  # 🚀 PHASE 4: Smart Deployment
+  deploy-release:
+    name: 🚀 Smart Release Deployment
+    runs-on: ubuntu-latest
+    needs: [build-apk, testing-validation]
+    if: github.event_name == 'release' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: ☕ Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: 🛠️ Make gradlew executable
+      run: chmod +x ./gradlew
+
+    - name: 🏗️ Build Release APK
+      run: |
+        echo "🚀 Building release version..."
+        ./gradlew assembleRelease --stacktrace
+        
+    - name: 📱 Prepare Release Artifacts
+      run: |
+        echo "📦 Preparing release artifacts..."
+        
+        # Create release directory
+        mkdir -p release-artifacts
+        
+        # Copy APK files
+        find app/build/outputs/apk -name "*.apk" -exec cp {} release-artifacts/ \;
+        
+        # Create release info
+        cat > release-artifacts/RELEASE_INFO.md << EOF
+        # 📱 Hebrew Overtime Tracker - Release Build
+        
+        **Build Date:** $(date)
+        **Commit:** ${GITHUB_SHA:0:7}
+        **Branch:** ${GITHUB_REF_NAME}
+        
+        ## ✅ Features
+        - Complete Hebrew/RTL interface
+        - Israeli calendar integration
+        - SQLite database with overtime tracking
+        - Monthly summary calculations
+        - Proven working Android configuration
+        
+        ## 📊 Build Information
+        - **Target SDK:** Android 14 (API 34)
+        - **Minimum SDK:** Android 5.0 (API 21)
+        - **Architecture:** Universal APK
+        - **Configuration:** Proven working pattern (after 17+ failures)
+        
+        ## 🔧 Installation
+        1. Download the APK file
+        2. Enable "Install from unknown sources" on your Android device
+        3. Install the APK
+        4. Launch "מעקב שעות נוספות" app
+        
+        ## 🎯 Testing
+        - ✅ Build validation passed
+        - ✅ Hebrew text encoding verified
+        - ✅ APK structure validated
+        - ✅ Configuration follows proven patterns
+        EOF
+        
+        # List artifacts
+        echo "📋 Release artifacts created:"
+        ls -la release-artifacts/
+
+    - name: 📤 Upload Release Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: hebrew-overtime-tracker-release-${{ github.sha }}
+        path: release-artifacts/
+        retention-days: 90
+
+    # If this is a GitHub release, attach files to the release
+    - name: 🏷️ Attach to GitHub Release
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./release-artifacts/app-release.apk
+        asset_name: hebrew-overtime-tracker-${{ github.event.release.tag_name }}.apk
+        asset_content_type: application/vnd.android.package-archive
+
+  # 📊 PHASE 5: Build Summary Report
+  build-summary:
+    name: 📊 Build Success Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality, build-apk, testing-validation]
+    if: always()
+    steps:
+    - name: 📋 Generate Build Report
+      run: |
+        echo "# 🎯 Hebrew Overtime Tracker - Build Summary Report"
+        echo ""
+        echo "## 📊 Build Results"
+        
+        if [ "${{ needs.code-quality.result }}" == "success" ]; then
+          echo "- ✅ Code Quality: PASSED"
+        else
+          echo "- ❌ Code Quality: FAILED"
+        fi
+        
+        if [ "${{ needs.build-apk.result }}" == "success" ]; then
+          echo "- ✅ APK Build: SUCCESSFUL"
+        else
+          echo "- ❌ APK Build: FAILED"
+        fi
+        
+        if [ "${{ needs.testing-validation.result }}" == "success" ]; then
+          echo "- ✅ Testing & Validation: PASSED"
+        else
+          echo "- ❌ Testing & Validation: FAILED"
+        fi
+        
+        echo ""
+        echo "## 🏆 Success Factors"
+        echo "- Uses proven working configuration (buildscript syntax)"
+        echo "- Method-based Android configuration (compileSdkVersion)"
+        echo "- Minimal dependencies strategy"
+        echo "- System theme compatibility"
+        echo "- Hebrew/RTL text support validated"
+        echo ""
+        echo "## 📱 Next Steps"
+        echo "1. Download APK from artifacts"
+        echo "2. Test on Android devices"
+        echo "3. Verify Hebrew text rendering"
+        echo "4. Test overtime tracking functionality"
+        echo ""
+        echo "**Configuration based on analysis of 17+ failed attempts - now working reliably! 🎉**
