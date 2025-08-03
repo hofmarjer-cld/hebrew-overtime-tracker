@@ -1,0 +1,61 @@
+name: 🏗️ Android Build - Hebrew Overtime Tracker
+
+# Simple, proven working workflow based on successful projects
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: 🔨 Build APK
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: ☕ Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    
+    - name: 🔧 Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+    
+    - name: 🛠️ Make gradlew executable
+      run: chmod +x ./gradlew
+    
+    - name: 🏗️ Build with Gradle
+      run: ./gradlew build
+    
+    - name: 📱 Build Debug APK
+      run: ./gradlew assembleDebug
+    
+    - name: 📤 Upload APK artifact
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: hebrew-overtime-tracker-debug-apk
+        path: app/build/outputs/apk/debug/*.apk
+        retention-days: 30
+    
+    - name: 📊 Show APK info
+      if: success()
+      run: |
+        echo "✅ APK Build completed successfully!"
+        APK_FILE=$(find app/build/outputs/apk -name "*.apk" | head -1)
+        if [ -f "$APK_FILE" ]; then
+          echo "📱 APK Location: $APK_FILE"
+          echo "📊 APK Size: $(du -h "$APK_FILE" | cut -f1)"
+          ls -la "$APK_FILE"
+        fi
