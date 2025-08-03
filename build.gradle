@@ -1,13 +1,9 @@
-// Hebrew Overtime Tracker - Root build.gradle
-// Using PROVEN WORKING configuration from successful Android CI/CD analysis
-
 buildscript {
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        // Using proven stable version combination
         classpath 'com.android.tools.build:gradle:8.5.2'
     }
 }
